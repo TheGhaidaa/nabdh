@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نبض | سوق العمل السعودي</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #e2e8f0; }
+header { background: #1e293b; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+header h1 { font-size: 24px; color: #38bdf8; }
+header span { color: #94a3b8; font-size: 14px; }
+.filters { display: flex; gap: 12px; padding: 20px 40px; background: #1e293b; border-bottom: 1px solid #334155; flex-wrap: wrap; }
+.filters select { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.filters button { background: #38bdf8; color: #0f172a; border: none; padding: 8px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; }
+.filters button:hover { background: #7dd3fc; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 30px 40px; }
+.card { background: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #334155; }
+.card h2 { font-size: 16px; color: #94a3b8; margin-bottom: 16px; }
+.bar-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bar-item span { font-size: 13px; min-width: 140px; }
+.bar { height: 8px; border-radius: 4px; background: #38bdf8; }
+.count { font-size: 12px; color: #64748b; margin-right: auto; }
+.stat { font-size: 36px; font-weight: bold; color: #38bdf8; }
+.stat-label { font-size: 14px; color: #94a3b8; margin-top: 4px; }
+.loading { color: #64748b; font-size: 14px; }
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
+.modal-box { background: #1e293b; border-radius: 16px; padding: 32px; min-width: 400px; max-width: 600px; border: 1px solid #334155; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-close { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+.modal-section { color: #94a3b8; margin: 16px 0 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>💓 نبض</h1>
+  <span>نبض سوق العمل السعودي — آخر تحديث: <span id="update-time"></span></span>
+</header>
+ 
+<div class="filters">
+  <select id="filter-city">
+    <option value="">كل المدن</option>
+  </select>
+  <button onclick="applyFilters()">تطبيق</button>
+  <button onclick="resetFilters()" style="background:#334155;color:#e2e8f0">إعادة تعيين</button>
+</div>
+ 
+<div class="grid">
+  <div class="card">
+    <h2>📊 إجمالي الوظائف</h2>
+    <div class="stat" id="total-jobs">...</div>
+    <div class="stat-label">وظيفة مرصودة</div>
+  </div>
+  <div class="card">
+    <h2>🏆 أبرز الأدوار — اضغط لتفاصيل</h2>
+    <div id="top-roles"><span class="loading">جاري التحميل...</span></div>
+  </div>
+  <div class="card">
+    <h2>🏙️ أبرز المدن</h2>
+    <div id="top-cities"><span class="loading">جاري التحميل...</span></div>
+  </div>
+  <div class="card">
+    <h2>🏢 أكثر الشركات توظيفاً</h2>
+    <div id="top-companies"><span class="loading">جاري التحميل...</span></div>
+  </div>
+</div>
+ 
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title" style="color:#38bdf8;font-size:20px"></h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+ 
+<script>
+const API = 'http://127.0.0.1:8000';
+document.getElementById('update-time').textContent = new Date().toLocaleDateString('ar-SA');
+ 
+function renderBars(data, containerId, key, valueKey, clickable=false) {
+  const max = Math.max(...data.map(d => d[valueKey]));
+  const html = data.map(d => `
+    <div class="bar-item" ${clickable ? `onclick="showDetail('${d[key]}')" style="cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1"` : ''}>
+      <span>${d[key]}</span>
+      <div class="bar" style="width:${(d[valueKey]/max*100)}px"></div>
+      <span class="count">${d[valueKey]}</span>
+    </div>`).join('');
+  document.getElementById(containerId).innerHTML = html || '<span class="loading">لا توجد بيانات</span>';
+}
+ 
+function loadData(city = '') {
+  const cityParam = city ? `?city=${encodeURIComponent(city)}` : '';
+  fetch(`${API}/api/top-roles${cityParam}`).then(r=>r.json()).then(d => renderBars(d,'top-roles','role','count',true));
+  fetch(`${API}/api/top-cities`).then(r=>r.json()).then(d => renderBars(d,'top-cities','city','count'));
+  fetch(`${API}/api/top-companies${cityParam}`).then(r=>r.json()).then(d => renderBars(d,'top-companies','company','count'));
+  fetch(`${API}/api/open-positions${cityParam}`).then(r=>r.json()).then(d => {
+    document.getElementById('total-jobs').textContent = d.total_jobs;
+  });
+}
+ 
+function applyFilters() {
+  loadData(document.getElementById('filter-city').value);
+}
+ 
+function resetFilters() {
+  document.getElementById('filter-city').value = '';
+  loadData();
+}
+ 
+function showDetail(role) {
+  const modal = document.getElementById('modal');
+  modal.style.display = 'flex';
+  document.getElementById('modal-title').textContent = role;
+  document.getElementById('modal-content').innerHTML = '<span class="loading">جاري التحميل...</span>';
+  fetch(`${API}/api/role/${encodeURIComponent(role)}`).then(r=>r.json()).then(d => {
+    document.getElementById('modal-content').innerHTML = `
+      <p style="color:#94a3b8;margin-bottom:16px">إجمالي الوظائف: <strong style="color:#38bdf8">${d.count}</strong></p>
+      <p class="modal-section">🏙️ أبرز المدن</p>
+      ${d.cities.map(c=>`<div class="bar-item"><span>${c.city}</span><span class="count">${c.count}</span></div>`).join('')}
+      <p class="modal-section">🏢 أبرز الشركات</p>
+      ${d.companies.map(c=>`<div class="bar-item"><span>${c.company}</span><span class="count">${c.count}</span></div>`).join('')}
+    `;
+  });
+}
+ 
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+ 
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+ 
+fetch(`${API}/api/top-cities`).then(r=>r.json()).then(cities => {
+  const select = document.getElementById('filter-city');
+  cities.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.city;
+    opt.textContent = c.city;
+    select.appendChild(opt);
+  });
+});
+ 
+loadData();
+</script>
+</body>
+</html>
