@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-import psycopg2
-import psycopg2.extras
+import psycopg
+from psycopg.rows import dict_row
 from collections import Counter
 import os
 
@@ -17,11 +17,11 @@ app.add_middleware(
 DATABASE_URL = os.environ.get("DATABASE_URL")
  
 def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg.connect(DATABASE_URL)
  
 def get_jobs(city=None, sector=None):
     conn = get_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = conn.cursor(row_factory=dict_row)
     q = "SELECT * FROM jobs WHERE 1=1"
     params = []
     if city:
