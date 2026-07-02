@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
  
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:qeDBpjpLwJWdooDBtEtmFzWEWphKBgKM@hayabusa.proxy.rlwy.net:51253/railway")
+DATABASE_URL = os.environ.get("DATABASE_URL")
  
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
